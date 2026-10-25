@@ -1,0 +1,202 @@
+{
+  "nodes": {
+    "model.olist_analytics.fct_orders": {
+      "resource_type": "model",
+      "name": "fct_orders",
+      "schema": "marts",
+      "description": "One row per order: status, amounts, delivery time, late flag and review score. The Power BI and Tableau dashboards read this table.\n",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "description": "Primary key. **Orders**: distinct count of `order_id` among delivered orders."
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer identifier of this order only."
+        },
+        "customer_unique_id": {
+          "name": "customer_unique_id",
+          "description": "Customer who placed the order."
+        },
+        "order_status": {
+          "name": "order_status",
+          "description": "Lifecycle status of the order."
+        },
+        "is_delivered": {
+          "name": "is_delivered",
+          "description": "True when order_status is 'delivered', the scope of every KPI."
+        },
+        "order_purchased_at": {
+          "name": "order_purchased_at",
+          "description": "When the customer placed the order."
+        },
+        "order_date": {
+          "name": "order_date",
+          "description": "Purchase date, key to dim_dates."
+        },
+        "order_approved_at": {
+          "name": "order_approved_at",
+          "description": "When the payment was approved."
+        },
+        "order_delivered_carrier_at": {
+          "name": "order_delivered_carrier_at",
+          "description": "When the seller handed the order to the carrier."
+        },
+        "order_delivered_customer_at": {
+          "name": "order_delivered_customer_at",
+          "description": "When the customer received the order."
+        },
+        "order_estimated_delivery_at": {
+          "name": "order_estimated_delivery_at",
+          "description": "Delivery date promised to the customer at purchase."
+        },
+        "items_count": {
+          "name": "items_count",
+          "description": "Number of items of the order, 0 for orders without items."
+        },
+        "items_revenue_brl": {
+          "name": "items_revenue_brl",
+          "description": "**Revenue (BRL)**: sum of the item prices (`price`) of the order, shipping excluded.\nThe KPI only counts delivered orders (`is_delivered = true`). **Average basket (BRL)**: revenue divided by the number of orders, computed after\naggregation. Never an average of per-order averages."
+        },
+        "freight_value_brl": {
+          "name": "freight_value_brl",
+          "description": "**Freight (BRL)**: sum of the shipping costs (`freight_value`) of the order items.\nSame scope as revenue: delivered orders only."
+        },
+        "payment_value_brl": {
+          "name": "payment_value_brl",
+          "description": "Total paid by the customer in BRL, shipping and vouchers included."
+        },
+        "payment_count": {
+          "name": "payment_count",
+          "description": "Number of payments of the order."
+        },
+        "payment_installments": {
+          "name": "payment_installments",
+          "description": "Largest number of instalments among the payments."
+        },
+        "main_payment_type": {
+          "name": "main_payment_type",
+          "description": "Type of the payment with the largest amount."
+        },
+        "review_id": {
+          "name": "review_id",
+          "description": "Review kept for the order, the most recently answered one."
+        },
+        "review_score": {
+          "name": "review_score",
+          "description": "**Average review score (1 to 5)**: average of `review_score`, with one review per order: the\nmost recently answered one. An order can receive several reviews, and counting all of them\nwould weigh some orders twice."
+        },
+        "review_count": {
+          "name": "review_count",
+          "description": "Number of reviews the order received, 0 when none."
+        },
+        "delivery_days": {
+          "name": "delivery_days",
+          "description": "**Delivery time (days)**: calendar days between the purchase date and the date the customer\nreceived the order. Only for delivered orders with both dates known: 8 delivered orders have\nno delivery date and are left out."
+        },
+        "is_late": {
+          "name": "is_late",
+          "description": "**Late delivery rate**: delivered orders received after the estimated delivery date, compared\nday by day, divided by delivered orders. `is_late` is false for orders that were not delivered\nor whose delivery date is unknown."
+        }
+      }
+    },
+    "model.olist_analytics.dim_dates": {
+      "resource_type": "model",
+      "name": "dim_dates",
+      "schema": "marts",
+      "description": "One row per day from 2016-01-01 to 2018-12-31, built with dbt_utils.date_spine.",
+      "columns": {
+        "date_day": {
+          "name": "date_day",
+          "description": "Primary key, the day."
+        },
+        "year_number": {
+          "name": "year_number",
+          "description": "Calendar year."
+        },
+        "quarter_number": {
+          "name": "quarter_number",
+          "description": "Quarter, from 1 to 4."
+        },
+        "month_number": {
+          "name": "month_number",
+          "description": "Month number, from 1 to 12."
+        },
+        "month_name": {
+          "name": "month_name",
+          "description": "Month name in English."
+        },
+        "month_start": {
+          "name": "month_start",
+          "description": "First day of the month, for monthly trends."
+        },
+        "iso_day_of_week": {
+          "name": "iso_day_of_week",
+          "description": "Day of the week, from 1 (Monday) to 7 (Sunday)."
+        },
+        "day_name": {
+          "name": "day_name",
+          "description": "Day name in English."
+        },
+        "is_weekend": {
+          "name": "is_weekend",
+          "description": "True on Saturdays and Sundays."
+        }
+      }
+    },
+    "model.olist_analytics.stg_olist__orders": {
+      "resource_type": "model",
+      "name": "stg_olist__orders",
+      "schema": "staging",
+      "description": "One row per order. Timestamps are cast from text, column names end in `_at`.",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "description": "Primary key."
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer of this order only; see stg_olist__customers.customer_unique_id."
+        },
+        "order_status": {
+          "name": "order_status",
+          "description": "Lifecycle status of the order."
+        },
+        "order_purchased_at": {
+          "name": "order_purchased_at",
+          "description": "When the customer placed the order."
+        },
+        "order_approved_at": {
+          "name": "order_approved_at",
+          "description": "When the payment was approved."
+        },
+        "order_delivered_carrier_at": {
+          "name": "order_delivered_carrier_at",
+          "description": "When the seller handed the order to the carrier."
+        },
+        "order_delivered_customer_at": {
+          "name": "order_delivered_customer_at",
+          "description": "When the customer received the order."
+        },
+        "order_estimated_delivery_at": {
+          "name": "order_estimated_delivery_at",
+          "description": "Delivery date promised to the customer at purchase."
+        }
+      }
+    }
+  },
+  "docs": {
+    "doc.olist_analytics.kpi_orders": {
+      "name": "kpi_orders",
+      "block_contents": "**Orders**: distinct count of `order_id` among delivered orders."
+    },
+    "doc.olist_analytics.kpi_late_rate": {
+      "name": "kpi_late_rate",
+      "block_contents": "**Late delivery rate**: delivered orders received after the estimated delivery date, compared\nday by day, divided by delivered orders. `is_late` is false for orders that were not delivered\nor whose delivery date is unknown."
+    },
+    "doc.olist_analytics.kpi_review_score": {
+      "name": "kpi_review_score",
+      "block_contents": "**Average review score (1 to 5)**: average of `review_score`, with one review per order: the\nmost recently answered one. An order can receive several reviews, and counting all of them\nwould weigh some orders twice."
+    }
+  }
+}
