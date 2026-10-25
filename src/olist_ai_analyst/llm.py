@@ -15,7 +15,10 @@ def get_chat_model(settings: Settings) -> BaseChatModel:
             from langchain_ollama import ChatOllama
 
             return ChatOllama(
-                model=model, base_url=settings.ollama_base_url, temperature=temperature
+                model=model,
+                base_url=settings.ollama_base_url,
+                temperature=temperature,
+                num_ctx=settings.ollama_num_ctx,
             )
         if provider == "groq":
             from langchain_groq import ChatGroq

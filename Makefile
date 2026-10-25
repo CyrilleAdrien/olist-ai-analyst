@@ -4,7 +4,7 @@
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install role doctor test lint format
+.PHONY: help install role doctor schema test lint format
 
 help: ## List the available commands
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) \
@@ -22,6 +22,9 @@ role: .env ## Create the read-only role of the agent in the warehouse
 
 doctor: .env ## Check the warehouse connection and the LLM
 	uv run olist-ai-analyst doctor
+
+schema: .env ## Print the schema context sent to the LLM
+	uv run olist-ai-analyst schema
 
 test: ## Run the tests (integration tests are skipped without a warehouse)
 	uv run pytest

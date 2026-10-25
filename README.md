@@ -32,6 +32,7 @@ Olist-Analytics and choose a password for `AGENT_DB_PASSWORD`. Then:
 ```bash
 make role      # creates the read-only role olist_agent (safe to run again)
 make doctor    # checks the warehouse connection and the model
+make schema    # prints the schema context sent to the model
 make test      # unit tests, plus integration tests when the warehouse is reachable
 ```
 
@@ -41,6 +42,19 @@ make test      # unit tests, plus integration tests when the warehouse is reacha
 [ok] warehouse: 6 tables in marts: dim_customers, dim_dates, dim_products, dim_sellers, fct_order_items, fct_orders
 [ok] model: ollama/qwen2.5-coder:7b replied: OK
 ```
+
+## Schema context
+
+The LLM only knows the warehouse through the context built by `schema_context.py`:
+
+- the tables and columns the read-only role can see, read from `information_schema`;
+- their descriptions and the KPI definitions, read from the dbt `manifest.json` of
+  Olist-Analytics (`DBT_MANIFEST_PATH`, written by `make build` there). Each KPI definition is
+  written once and columns refer to it with a tag such as `[late_rate]`;
+- a few question/SQL examples in French (`examples.py`).
+
+`make schema` prints this context (about 2,000 tokens). Ollama gets an 8,192-token window
+(`OLLAMA_NUM_CTX`), since its default would cut the prompt.
 
 ## Safety
 

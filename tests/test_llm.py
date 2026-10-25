@@ -11,3 +11,4 @@ def test_ollama_model_uses_settings():
     assert model.model == "qwen2.5-coder:7b"
     assert model.base_url == "http://ollama:11434"
     assert model.temperature == 0.0
+    assert model.num_ctx == 8192

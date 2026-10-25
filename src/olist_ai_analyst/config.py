@@ -25,11 +25,15 @@ class Settings(BaseSettings):
     # Only the schema built by dbt for BI tools is exposed to the agent
     agent_db_schema: str = "marts"
     statement_timeout_ms: int = 10_000
+    # manifest.json written by dbt build in Olist-Analytics, for the table and column descriptions
+    dbt_manifest_path: str = "../olist-analytics/dbt/target/manifest.json"
 
     llm_provider: Provider = "ollama"
     llm_model: str = ""
     llm_temperature: float = 0.0
     ollama_base_url: str = "http://localhost:11434"
+    # Ollama cuts prompts at 2048 or 4096 tokens by default, too short for the schema context
+    ollama_num_ctx: int = 8192
 
     @property
     def model_name(self) -> str:
