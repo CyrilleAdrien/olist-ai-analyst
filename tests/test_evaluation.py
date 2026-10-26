@@ -1,12 +1,10 @@
 import datetime as dt
 from decimal import Decimal
 
-import psycopg
 import pytest
 from langchain_core.language_models import FakeListChatModel
 
 from olist_ai_analyst.agent import build_agent
-from olist_ai_analyst.config import Settings
 from olist_ai_analyst.db import QueryResult, run_query
 from olist_ai_analyst.evaluation import load_cases, results_match, run_case, summarize
 from olist_ai_analyst.examples import EXAMPLES
@@ -49,16 +47,6 @@ def test_cases_are_unique_and_differ_from_the_examples():
     assert len({c.id for c in cases}) == 30
     assert not {c.question for c in cases} & {e.question for e in EXAMPLES}
     assert all(c.sql or c.expect == "out_of_scope" for c in cases)
-
-
-@pytest.fixture(scope="module")
-def settings() -> Settings:
-    settings = Settings()
-    try:
-        run_query(settings, "select 1")
-    except psycopg.OperationalError as exc:
-        pytest.skip(f"warehouse not reachable: {exc}")
-    return settings
 
 
 @pytest.mark.integration

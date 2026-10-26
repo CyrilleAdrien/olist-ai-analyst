@@ -1,5 +1,7 @@
 # Olist AI Analyst
 
+[![CI](https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml)
+
 An AI agent that answers business questions in French on the Olist data warehouse: it writes
 the SQL, runs it read-only, checks the result and replies with a chart.
 
@@ -16,7 +18,7 @@ schema, through a dedicated read-only role.
 | Charts | Plotly |
 | Interface | Streamlit |
 | Warehouse | PostgreSQL 16 from Olist-Analytics, read-only role on `marts` |
-| Tooling | uv, ruff, pytest |
+| Tooling | uv, ruff, pytest, GitHub Actions |
 
 ## Getting started
 
@@ -115,6 +117,18 @@ make eval MODEL=qwen2.5-coder:14b   # another model, after ollama pull
 
 Each run writes `evals/results/<provider>-<model>.md` (summary by category, every case) and a
 `.json` file with the SQL and the answer of every question.
+
+## Continuous integration
+
+GitHub Actions runs two jobs on every pull request and on `main`:
+
+- **Lint and unit tests**: `ruff check`, `ruff format --check` and the unit tests. They use fake
+  chat models, so no LLM and no API key are needed.
+- **Integration tests**: starts PostgreSQL 16, checks out Olist-Analytics, loads its CI sample
+  and runs `dbt build`, creates the read-only role, then runs the tests marked `integration`
+  against the real marts. `REQUIRE_WAREHOUSE=1` makes them fail instead of being skipped.
+
+The evaluation is not part of CI: it needs a real model (`make eval` on your machine).
 
 ## Safety
 
