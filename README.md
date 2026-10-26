@@ -68,6 +68,10 @@ The LLM only knows the warehouse through the context built by `schema_context.py
    `marts`, at most 1,000 rows), then the read-only role runs it.
 
 3. `write_answer`: the model writes a short answer in French from the result (`answer.py`).
+   Small models compute badly in their head, so the figures it may quote (total, average,
+   highest, lowest) are computed in Python and the table is formatted the French way, with
+   the state names. Every number of the answer is checked against them: an answer with a
+   number from nowhere is rewritten once, then replaced by a plain summary of the figures.
 
 When the query is refused, fails or returns no rows, the error goes back to the model, which
 writes a corrected query, with every failed attempt in view. The agent stops after 3 queries.
