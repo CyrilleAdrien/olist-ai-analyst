@@ -39,7 +39,7 @@ def test_question_gets_an_answer_the_sql_and_the_data():
         app.chat_message[1].markdown[0].value
         == "96 478 commandes sont livrées et 1 107 sont expédiées."
     )
-    assert "SELECT order_status" in app.code[0].value
+    assert app.code[0].value.startswith("SELECT\n  order_status,")
     assert app.expander[0].label.startswith("SQL · 1 requête(s)")
     assert len(app.dataframe) == 1
 

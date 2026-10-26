@@ -43,9 +43,16 @@ def _layout(fig: go.Figure, title: str) -> go.Figure:
         margin={"l": 16, "r": 24, "t": 56, "b": 16},
         hoverlabel={"bgcolor": "white", "font": {"color": INK}},
         showlegend=False,
+        separators=", ",  # French numbers: 6 534,50
     )
-    fig.update_xaxes(gridcolor=GRID, zeroline=False, automargin=True)
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, automargin=True)
+    axes = {
+        "gridcolor": GRID,
+        "zeroline": False,
+        "automargin": True,
+        "tickfont": {"color": INK_QUIET},
+    }
+    fig.update_xaxes(**axes)
+    fig.update_yaxes(**axes)
     return fig
 
 
@@ -59,6 +66,7 @@ def make_chart(columns: list[str], rows: list[tuple[Any, ...]]) -> go.Figure | N
     if measure is None or any(v is None for v in first):
         return None
     values = [float(row[measure]) for row in rows]
+    number = ",.0f" if all(v == int(v) for v in values) else ",.2f"
     title = f"{_title(columns[measure])} by {_title(columns[0]).lower()}"
 
     if all(_is_date(v) for v in first):
@@ -70,7 +78,7 @@ def make_chart(columns: list[str], rows: list[tuple[Any, ...]]) -> go.Figure | N
                 mode="lines+markers",
                 line={"color": BLUE, "width": 2},
                 marker={"size": 8, "color": BLUE},
-                hovertemplate="%{x|%b %Y}<br>%{y:,.2f}<extra></extra>",
+                hovertemplate=f"%{{x|%b %Y}}<br>%{{y:{number}}}<extra></extra>",
             )
         )
         fig.update_yaxes(rangemode="tozero")
@@ -86,7 +94,7 @@ def make_chart(columns: list[str], rows: list[tuple[Any, ...]]) -> go.Figure | N
                 y=labels,
                 orientation="h",
                 marker={"color": BLUE, "cornerradius": 4},
-                hovertemplate="%{y}<br>%{x:,.2f}<extra></extra>",
+                hovertemplate=f"%{{y}}<br>%{{x:{number}}}<extra></extra>",
             )
         )
         fig.update_layout(height=max(320, 28 * len(bars) + 96), bargap=0.25)

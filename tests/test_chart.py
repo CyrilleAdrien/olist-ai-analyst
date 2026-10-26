@@ -40,3 +40,9 @@ def test_booleans_are_labelled_in_french():
 
 def test_text_only_result_has_no_chart():
     assert make_chart(["category", "state"], [("bed", "SP"), ("toys", "RJ")]) is None
+
+
+def test_hover_shows_french_numbers():
+    figure = make_chart(["is_late", "orders"], [(False, 89944), (True, 6534)])
+    assert figure.layout.separators == ", "
+    assert figure.data[0].hovertemplate == "%{y}<br>%{x:,.0f}<extra></extra>"

@@ -2,6 +2,7 @@
 
 import time
 
+import sqlglot
 import streamlit as st
 
 from olist_ai_analyst.agent import AgentResult, ask
@@ -35,9 +36,10 @@ def show_result(result: AgentResult, seconds: float) -> None:
         return
     figure = make_chart(result.columns, result.rows)
     if figure is not None:
-        st.plotly_chart(figure, width="stretch")
+        # theme=None keeps the chart's own colours, readable in light and dark mode
+        st.plotly_chart(figure, theme=None, width="stretch")
     with st.expander(f"SQL · {result.attempts} requête(s) · {seconds:.1f} s"):
-        st.code(result.sql, language="sql")
+        st.code(sqlglot.transpile(result.sql, read="postgres", pretty=True)[0], language="sql")
     with st.expander(f"Données · {len(result.rows)} ligne(s)"):
         st.dataframe(
             {name: [row[i] for row in result.rows] for i, name in enumerate(result.columns)},
