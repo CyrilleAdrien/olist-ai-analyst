@@ -27,7 +27,7 @@ schema: .env ## Print the schema context sent to the LLM
 	uv run olist-ai-analyst schema
 
 ask: .env ## Ask the agent a question: make ask Q="Quel est le panier moyen ?"
-	uv run olist-ai-analyst ask "$(Q)"
+	uv run olist-ai-analyst ask "$(Q)" --chart chart.html
 
 test: ## Run the tests (integration tests are skipped without a warehouse)
 	uv run pytest

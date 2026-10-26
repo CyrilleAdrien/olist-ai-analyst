@@ -14,6 +14,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
+from olist_ai_analyst.answer import FAILED_ANSWER, OUT_OF_SCOPE_ANSWER, write_answer
 from olist_ai_analyst.config import Settings
 from olist_ai_analyst.db import QueryResult, run_query
 from olist_ai_analyst.llm import get_chat_model
@@ -52,6 +53,7 @@ class AgentState(TypedDict):
     error: str
     attempts: int
     status: Status
+    answer: str
 
 
 @dataclass
@@ -63,6 +65,7 @@ class AgentResult:
     rows: list[tuple[Any, ...]] = field(default_factory=list)
     error: str = ""
     attempts: int = 0
+    answer: str = ""
 
 
 def _attempt(sql: str, error: str) -> str:
@@ -88,7 +91,7 @@ def build_agent(
             prompt += "\n\nWrite a corrected query that fixes these errors."
         reply = str(llm.invoke([system, HumanMessage(prompt)]).content)
         if reply.strip().strip(".").upper() == OUT_OF_SCOPE:
-            return {"status": "out_of_scope", "sql": ""}
+            return {"status": "out_of_scope", "sql": "", "answer": OUT_OF_SCOPE_ANSWER}
         return {"sql": extract_sql(reply), "attempts": state["attempts"] + 1}
 
     def execute(state: AgentState) -> dict:
@@ -102,6 +105,7 @@ def build_agent(
                 "error": error,
                 "history": [*state["history"], _attempt(state["sql"], error)],
                 "status": "failed" if failed else "running",
+                "answer": FAILED_ANSWER if failed else "",
             }
         if not result.rows and state["attempts"] < max_attempts:
             error = "The query returned no rows. Check the filters and the values used."
@@ -118,18 +122,24 @@ def build_agent(
             "status": "ok",
         }
 
+    def answer_node(state: AgentState) -> dict:
+        text = write_answer(llm, state["question"], state["sql"], state["columns"], state["rows"])
+        return {"answer": text}
+
     def after_generate(state: AgentState) -> str:
         return END if state["status"] == "out_of_scope" else "execute"
 
     def after_execute(state: AgentState) -> str:
-        return "generate_sql" if state["status"] == "running" else END
+        return {"running": "generate_sql", "ok": "write_answer"}.get(state["status"], END)
 
     graph = StateGraph(AgentState)
     graph.add_node("generate_sql", generate_sql)
     graph.add_node("execute", execute)
+    graph.add_node("write_answer", answer_node)
     graph.add_edge(START, "generate_sql")
     graph.add_conditional_edges("generate_sql", after_generate, ["execute", END])
-    graph.add_conditional_edges("execute", after_execute, ["generate_sql", END])
+    graph.add_conditional_edges("execute", after_execute, ["generate_sql", "write_answer", END])
+    graph.add_edge("write_answer", END)
     return graph.compile()
 
 
@@ -144,6 +154,7 @@ def ask(question: str, agent) -> AgentResult:
             "error": "",
             "attempts": 0,
             "status": "running",
+            "answer": "",
         }
     )
     return AgentResult(
@@ -154,6 +165,7 @@ def ask(question: str, agent) -> AgentResult:
         rows=state["rows"],
         error=state["error"],
         attempts=state["attempts"],
+        answer=state["answer"],
     )
 
 
