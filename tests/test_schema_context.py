@@ -76,8 +76,11 @@ def test_context_covers_every_mart(settings):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("example", EXAMPLES, ids=lambda e: e.question)
-def test_examples_run_on_the_warehouse(settings, example):
-    result = run_query(settings, example.sql)
+def test_examples_pass_the_guard_and_run(settings, example):
+    from olist_ai_analyst.sql_guard import validate_sql
+
+    tables = {t.name: {c.name for c in t.columns} for t in build_schema_context(settings).tables}
+    result = run_query(settings, validate_sql(example.sql, tables))
     assert result.rows
 
 

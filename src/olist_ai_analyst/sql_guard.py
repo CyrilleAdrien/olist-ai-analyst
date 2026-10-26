@@ -4,6 +4,7 @@ The read-only role already blocks writes; this guard gives the LLM a clear error
 correct its query, and keeps results small.
 """
 
+import difflib
 import re
 
 import sqlglot
@@ -35,8 +36,52 @@ def extract_sql(text: str) -> str:
     return sql.strip().rstrip(";").strip()
 
 
-def validate_sql(sql: str, allowed_tables: set[str], schema: str = "marts") -> str:
-    """Return the query ready to run, or raise UnsafeQueryError with the reason."""
+def _where_is(column: str, tables: dict[str, set[str]]) -> str:
+    """Point the LLM to the tables that hold this column, or to close names."""
+    exact = [f"{table}.{column}" for table, cols in sorted(tables.items()) if column in cols]
+    if exact:
+        return f" It exists in: {', '.join(exact)}."
+    every = [f"{table}.{col}" for table, cols in sorted(tables.items()) for col in sorted(cols)]
+    # "state" -> customer_state, seller_state; then close spellings such as "delivry_days"
+    near = [c for c in every if c.split(".")[1].endswith(f"_{column}")]
+    if not near:
+        names = [c.split(".")[1] for c in every]
+        close = difflib.get_close_matches(column, names, n=2, cutoff=0.8)
+        near = [c for c in every if c.split(".")[1] in close]
+    return f" Did you mean: {', '.join(near)}?" if near else ""
+
+
+def _check_columns(query: exp.Query, tables: dict[str, set[str]]) -> None:
+    """Refuse columns that do not exist, the most common mistake of small models."""
+    if any(query.find_all(exp.Subquery)) or any(query.find_all(exp.CTE)):
+        return  # derived tables have columns we do not know: let PostgreSQL check them
+    aliases = {t.alias_or_name: t.name for t in query.find_all(exp.Table)}
+    output_names = {e.alias_or_name for e in query.find_all(exp.Alias)}
+    used = {aliases[a] for a in aliases}
+    for column in query.find_all(exp.Column):
+        name, qualifier = column.name, column.table
+        if qualifier:
+            table = aliases.get(qualifier)
+            if table is None:
+                raise UnsafeQueryError(f"Unknown table or alias {qualifier} in {column.sql()}.")
+            if name not in tables[table]:
+                raise UnsafeQueryError(
+                    f"Column {name} does not exist in {table}.{_where_is(name, tables)}"
+                    " Join the table that holds it."
+                )
+        elif name not in output_names and not any(name in tables[t] for t in used):
+            raise UnsafeQueryError(
+                f"Column {name} does not exist in {', '.join(sorted(used))}."
+                f"{_where_is(name, tables)} Join the table that holds it."
+            )
+
+
+def validate_sql(sql: str, tables: dict[str, set[str]], schema: str = "marts") -> str:
+    """Return the query ready to run, or raise UnsafeQueryError with the reason.
+
+    `tables` maps each table the agent may read to its columns.
+    """
+    allowed_tables = set(tables)
     try:
         statements = [s for s in sqlglot.parse(sql, read="postgres") if s is not None]
     except ParseError as exc:
@@ -57,6 +102,8 @@ def validate_sql(sql: str, allowed_tables: set[str], schema: str = "marts") -> s
         if table.name not in allowed_tables | ctes:
             known = ", ".join(sorted(allowed_tables))
             raise UnsafeQueryError(f"Unknown table {table.name}. Available tables: {known}.")
+
+    _check_columns(query, tables)
 
     limit = query.args.get("limit")
     limit_value = limit.expression if limit else None

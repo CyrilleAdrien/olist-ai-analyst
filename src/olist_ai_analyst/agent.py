@@ -30,6 +30,10 @@ Rules:
 - Use only the tables and columns listed below. Never invent a column.
 - Revenue, order and review KPIs only count delivered orders (is_delivered), as defined below.
 - Amounts are in BRL. Category names are in product_category_name_english.
+- Joins: customer location (state, city) is in dim_customers, joined on customer_unique_id;
+  seller location is in dim_sellers, joined to fct_order_items on seller_id; products are
+  joined to fct_order_items on product_id; dim_dates only holds calendar columns, joined on
+  order_date = date_day.
 - Give readable column aliases in English (snake_case) and round averages and rates to 2 decimals.
 - Reply with the query only, in a ```sql block, without explanation.
 - If the question cannot be answered with these tables (weather, code, opinions, other
@@ -42,6 +46,7 @@ Rules:
 class AgentState(TypedDict):
     question: str
     sql: str
+    history: list[str]
     columns: list[str]
     rows: list[tuple[Any, ...]]
     error: str
@@ -60,6 +65,10 @@ class AgentResult:
     attempts: int = 0
 
 
+def _attempt(sql: str, error: str) -> str:
+    return f"This query failed:\n```sql\n{sql}\n```\nError: {error}"
+
+
 def build_agent(
     llm: BaseChatModel,
     context: SchemaContext,
@@ -69,16 +78,14 @@ def build_agent(
     system = SystemMessage(
         SYSTEM_PROMPT.format(out_of_scope=OUT_OF_SCOPE, schema=context.to_prompt())
     )
-    allowed_tables = {table.name for table in context.tables}
+    tables = {table.name: {col.name for col in table.columns} for table in context.tables}
 
     def generate_sql(state: AgentState) -> dict:
         prompt = f"Question: {state['question']}"
-        if state["error"]:
-            prompt += (
-                f"\n\nYour previous query:\n```sql\n{state['sql']}\n```\n"
-                f"failed with this error:\n{state['error']}\n"
-                "Write a corrected query."
-            )
+        if state["history"]:
+            # Every failed attempt is shown, so that the model does not repeat a mistake
+            prompt += "\n\n" + "\n\n".join(state["history"])
+            prompt += "\n\nWrite a corrected query that fixes these errors."
         reply = str(llm.invoke([system, HumanMessage(prompt)]).content)
         if reply.strip().strip(".").upper() == OUT_OF_SCOPE:
             return {"status": "out_of_scope", "sql": ""}
@@ -86,16 +93,22 @@ def build_agent(
 
     def execute(state: AgentState) -> dict:
         try:
-            sql = validate_sql(state["sql"], allowed_tables, context.schema)
+            sql = validate_sql(state["sql"], tables, context.schema)
             result = run_sql(sql)
         except (UnsafeQueryError, psycopg.Error) as exc:
             error = str(exc).strip()
             failed = state["attempts"] >= max_attempts
-            return {"error": error, "status": "failed" if failed else "running"}
+            return {
+                "error": error,
+                "history": [*state["history"], _attempt(state["sql"], error)],
+                "status": "failed" if failed else "running",
+            }
         if not result.rows and state["attempts"] < max_attempts:
+            error = "The query returned no rows. Check the filters and the values used."
             return {
                 "sql": sql,
-                "error": "The query returned no rows. Check the filters and the values used.",
+                "error": error,
+                "history": [*state["history"], _attempt(sql, error)],
             }
         return {
             "sql": sql,
@@ -125,6 +138,7 @@ def ask(question: str, agent) -> AgentResult:
         {
             "question": question,
             "sql": "",
+            "history": [],
             "columns": [],
             "rows": [],
             "error": "",

@@ -33,6 +33,16 @@ EXAMPLES: list[Example] = [
         ),
     ),
     Example(
+        question="Quel est le chiffre d'affaires par État du client ?",
+        sql=(
+            "select c.customer_state, sum(o.items_revenue_brl) as revenue_brl"
+            " from fct_orders as o"
+            " join dim_customers as c on o.customer_unique_id = c.customer_unique_id"
+            " where o.is_delivered"
+            " group by c.customer_state order by revenue_brl desc"
+        ),
+    ),
+    Example(
         question="Comment évolue le nombre de commandes par mois ?",
         sql=(
             "select d.month_start, count(*) as orders"

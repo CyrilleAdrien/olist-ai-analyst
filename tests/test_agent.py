@@ -44,14 +44,34 @@ def test_first_query_succeeds():
 
 def test_database_error_is_sent_back_and_fixed():
     warehouse = FakeWarehouse(
-        psycopg.errors.UndefinedColumn('column "nb" does not exist'),
+        psycopg.errors.InvalidTextRepresentation("invalid input syntax for type integer"),
         QueryResult(["orders"], [(42,)]),
     )
     result = run(
-        ["select nb from fct_orders", "select count(*) as orders from fct_orders"], warehouse
+        ["select sum(order_id::int) from fct_orders", "select count(*) as orders from fct_orders"],
+        warehouse,
     )
     assert result.status == "ok"
     assert result.attempts == 2
+
+
+class RecordingModel(FakeListChatModel):
+    """Fake model that keeps the last message of every prompt it receives."""
+
+    prompts: list[str] = []
+
+    def _call(self, messages, *args, **kwargs):
+        self.prompts.append(messages[-1].content)
+        return super()._call(messages, *args, **kwargs)
+
+
+def test_every_failed_attempt_is_shown_to_the_model():
+    replies = ["select state from fct_orders", "select city from fct_orders", "select 1 as n"]
+    model = RecordingModel(responses=replies, prompts=[])
+    warehouse = FakeWarehouse(QueryResult(["n"], [(1,)]))
+    ask("Combien de commandes par État ?", build_agent(model, CONTEXT, warehouse))
+    assert "select state" in model.prompts[2]
+    assert "select city" in model.prompts[2]
 
 
 def test_unsafe_query_never_reaches_the_warehouse():
