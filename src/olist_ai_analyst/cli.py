@@ -5,6 +5,7 @@ import sys
 
 import httpx
 
+from olist_ai_analyst.agent import ask, build_default_agent
 from olist_ai_analyst.config import get_settings
 from olist_ai_analyst.db import run_query
 from olist_ai_analyst.llm import get_chat_model
@@ -57,12 +58,34 @@ def show_schema() -> int:
     return 0
 
 
+def ask_question(question: str) -> int:
+    """Run the agent on one question and print the SQL and the first rows."""
+    result = ask(question, build_default_agent(get_settings()))
+    if result.status == "out_of_scope":
+        print("Question hors du périmètre des données Olist.")
+        return 0
+    print(f"SQL ({result.attempts} attempt(s)):\n{result.sql}\n")
+    if result.status == "failed":
+        print(f"Failed: {result.error}")
+        return 1
+    print(" | ".join(result.columns))
+    for row in result.rows[:20]:
+        print(" | ".join(str(value) for value in row))
+    if len(result.rows) > 20:
+        print(f"... {len(result.rows)} rows")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="olist-ai-analyst")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Check the warehouse connection and the LLM")
     sub.add_parser("schema", help="Print the schema context sent to the LLM")
+    ask_parser = sub.add_parser("ask", help="Ask a question in French")
+    ask_parser.add_argument("question")
     args = parser.parse_args()
+    if args.command == "ask":
+        sys.exit(ask_question(args.question))
     commands = {"doctor": doctor, "schema": show_schema}
     sys.exit(commands[args.command]())
 

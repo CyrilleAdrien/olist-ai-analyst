@@ -4,7 +4,7 @@
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install role doctor schema test lint format
+.PHONY: help install role doctor schema ask test lint format
 
 help: ## List the available commands
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) \
@@ -25,6 +25,9 @@ doctor: .env ## Check the warehouse connection and the LLM
 
 schema: .env ## Print the schema context sent to the LLM
 	uv run olist-ai-analyst schema
+
+ask: .env ## Ask the agent a question: make ask Q="Quel est le panier moyen ?"
+	uv run olist-ai-analyst ask "$(Q)"
 
 test: ## Run the tests (integration tests are skipped without a warehouse)
 	uv run pytest

@@ -79,3 +79,20 @@ def test_context_covers_every_mart(settings):
 def test_examples_run_on_the_warehouse(settings, example):
     result = run_query(settings, example.sql)
     assert result.rows
+
+
+@pytest.mark.integration
+def test_agent_runs_a_real_query_end_to_end(settings):
+    from langchain_core.language_models import FakeListChatModel
+
+    from olist_ai_analyst.agent import ask, build_agent
+
+    reply = f"```sql\n{EXAMPLES[0].sql}\n```"
+    agent = build_agent(
+        FakeListChatModel(responses=[reply]),
+        build_schema_context(settings),
+        lambda sql: run_query(settings, sql),
+    )
+    result = ask("Quel est le chiffre d'affaires total ?", agent)
+    assert result.status == "ok"
+    assert result.columns == ["revenue_brl", "average_basket_brl"]

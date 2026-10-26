@@ -12,7 +12,7 @@ schema, through a dedicated read-only role.
 | Layer | Choice |
 | --- | --- |
 | LLM | Ollama, `qwen2.5-coder:7b` by default (free, runs locally); Groq, Claude or OpenAI via `LLM_PROVIDER` |
-| Agent | LangChain chat models, LangGraph (next steps) |
+| Agent | LangGraph, sqlglot to check the SQL before it runs |
 | Warehouse | PostgreSQL 16 from Olist-Analytics, read-only role on `marts` |
 | Tooling | uv, ruff, pytest |
 
@@ -33,6 +33,7 @@ Olist-Analytics and choose a password for `AGENT_DB_PASSWORD`. Then:
 make role      # creates the read-only role olist_agent (safe to run again)
 make doctor    # checks the warehouse connection and the model
 make schema    # prints the schema context sent to the model
+make ask Q="Quel est le panier moyen ?"
 make test      # unit tests, plus integration tests when the warehouse is reachable
 ```
 
@@ -55,6 +56,22 @@ The LLM only knows the warehouse through the context built by `schema_context.py
 
 `make schema` prints this context (about 2,000 tokens). Ollama gets an 8,192-token window
 (`OLLAMA_NUM_CTX`), since its default would cut the prompt.
+
+## How the agent works
+
+`agent.py` is a LangGraph loop of two nodes:
+
+1. `generate_sql`: the model gets the schema context and the question, and replies with one
+   query, or `OUT_OF_SCOPE` when the data cannot answer it.
+2. `execute`: `sql_guard.py` checks the query with sqlglot (one `SELECT`, only tables of
+   `marts`, at most 1,000 rows), then the read-only role runs it.
+
+When the query is refused, fails or returns no rows, the error goes back to the model, which
+writes a corrected query. The agent stops after 3 queries.
+
+```bash
+make ask Q="Quels États ont le plus de retards de livraison ?"
+```
 
 ## Safety
 
