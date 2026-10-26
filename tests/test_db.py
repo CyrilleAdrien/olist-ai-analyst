@@ -3,18 +3,7 @@
 import psycopg
 import pytest
 
-from olist_ai_analyst.config import Settings
 from olist_ai_analyst.db import run_query
-
-
-@pytest.fixture(scope="module")
-def settings() -> Settings:
-    settings = Settings()
-    try:
-        run_query(settings, "select 1")
-    except psycopg.OperationalError as exc:
-        pytest.skip(f"warehouse not reachable: {exc}")
-    return settings
 
 
 @pytest.mark.integration

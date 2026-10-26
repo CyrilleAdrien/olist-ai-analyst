@@ -1,9 +1,7 @@
 from pathlib import Path
 
-import psycopg
 import pytest
 
-from olist_ai_analyst.config import Settings
 from olist_ai_analyst.db import run_query
 from olist_ai_analyst.examples import EXAMPLES
 from olist_ai_analyst.schema_context import build_schema_context, load_dbt_docs, merge
@@ -55,16 +53,6 @@ def test_context_works_without_manifest():
     prompt = merge("marts", DB_TABLES, DbtDocs(), []).to_prompt()
     assert "Table dim_dates\n" in prompt
     assert "KPI definitions" not in prompt
-
-
-@pytest.fixture(scope="module")
-def settings() -> Settings:
-    settings = Settings()
-    try:
-        run_query(settings, "select 1")
-    except psycopg.OperationalError as exc:
-        pytest.skip(f"warehouse not reachable: {exc}")
-    return settings
 
 
 @pytest.mark.integration
