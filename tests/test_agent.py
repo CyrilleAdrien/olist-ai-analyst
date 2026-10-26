@@ -33,10 +33,12 @@ def run(replies, warehouse, question="Combien de commandes ?"):
     return ask(question, agent)
 
 
-def test_first_query_succeeds():
+def test_first_query_succeeds_and_is_answered_in_french():
     warehouse = FakeWarehouse(QueryResult(["orders"], [(42,)]))
-    result = run(["```sql\nselect count(*) as orders from fct_orders\n```"], warehouse)
+    replies = ["```sql\nselect count(*) as orders from fct_orders\n```", "Il y a 42 commandes."]
+    result = run(replies, warehouse)
     assert result.status == "ok"
+    assert result.answer == "Il y a 42 commandes."
     assert result.rows == [(42,)]
     assert result.attempts == 1
     assert warehouse.queries == ["SELECT COUNT(*) AS orders FROM fct_orders LIMIT 1000"]
@@ -86,6 +88,7 @@ def test_agent_gives_up_after_three_attempts():
     result = run(["select * from users"] * 3, warehouse)
     assert result.status == "failed"
     assert result.attempts == 3
+    assert result.answer.startswith("Je n'ai pas réussi")
     assert "Unknown table users" in result.error
     assert warehouse.queries == []
 
@@ -102,4 +105,5 @@ def test_out_of_scope_question_stops_without_query():
     warehouse = FakeWarehouse()
     result = run(["OUT_OF_SCOPE"], warehouse, question="Quel temps fait-il à Paris ?")
     assert result.status == "out_of_scope"
+    assert result.answer.startswith("Je ne peux répondre")
     assert warehouse.queries == []

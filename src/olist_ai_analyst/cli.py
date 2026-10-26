@@ -6,6 +6,7 @@ import sys
 import httpx
 
 from olist_ai_analyst.agent import ask, build_default_agent
+from olist_ai_analyst.chart import make_chart
 from olist_ai_analyst.config import get_settings
 from olist_ai_analyst.db import run_query
 from olist_ai_analyst.llm import get_chat_model
@@ -58,21 +59,25 @@ def show_schema() -> int:
     return 0
 
 
-def ask_question(question: str) -> int:
-    """Run the agent on one question and print the SQL and the first rows."""
+def ask_question(question: str, chart_path: str | None = None) -> int:
+    """Run the agent on one question: print the answer, the SQL and the first rows."""
     result = ask(question, build_default_agent(get_settings()))
+    print(f"{result.answer}\n")
     if result.status == "out_of_scope":
-        print("Question hors du périmètre des données Olist.")
         return 0
     print(f"SQL ({result.attempts} attempt(s)):\n{result.sql}\n")
     if result.status == "failed":
-        print(f"Failed: {result.error}")
+        print(f"Last error: {result.error}")
         return 1
     print(" | ".join(result.columns))
     for row in result.rows[:20]:
         print(" | ".join(str(value) for value in row))
     if len(result.rows) > 20:
         print(f"... {len(result.rows)} rows")
+    figure = make_chart(result.columns, result.rows)
+    if chart_path and figure is not None:
+        figure.write_html(chart_path, include_plotlyjs="cdn")
+        print(f"\nChart saved to {chart_path}")
     return 0
 
 
@@ -83,9 +88,10 @@ def main() -> None:
     sub.add_parser("schema", help="Print the schema context sent to the LLM")
     ask_parser = sub.add_parser("ask", help="Ask a question in French")
     ask_parser.add_argument("question")
+    ask_parser.add_argument("--chart", metavar="PATH", help="Save the chart as an HTML file")
     args = parser.parse_args()
     if args.command == "ask":
-        sys.exit(ask_question(args.question))
+        sys.exit(ask_question(args.question, args.chart))
     commands = {"doctor": doctor, "schema": show_schema}
     sys.exit(commands[args.command]())
 
