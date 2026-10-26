@@ -1,6 +1,31 @@
-# Olist AI Analyst
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Olist AI Analyst">
+</p>
 
-[![CI](https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml)
+<p align="center">
+  <em>Ask the Olist warehouse a question in French: a local LLM writes the SQL, a guard checks it,
+  a read-only role runs it, and Python checks every number of the answer.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml"><img src="https://github.com/CyrilleAdrien/olist-ai-analyst/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/LangGraph-1.2-1C3C3C?logo=langchain&logoColor=white" alt="LangGraph 1.2">
+  <img src="https://img.shields.io/badge/Ollama-qwen2.5--coder:7b-000000?logo=ollama&logoColor=white" alt="Ollama qwen2.5-coder:7b">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/Streamlit-1.66-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit 1.66">
+  <img src="https://img.shields.io/badge/eval-29%2F30-16A34A" alt="Evaluation 29/30">
+  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/"><img src="https://img.shields.io/badge/data-CC%20BY--NC--SA%204.0-lightgrey" alt="Data licence"></a>
+</p>
+
+<p align="center">
+  <a href="#architecture"><img src="https://img.shields.io/badge/Architecture-View-336791?style=for-the-badge" alt="Architecture"></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/Tech%20stack-Tools-7C3AED?style=for-the-badge" alt="Tech stack"></a>
+  <a href="#getting-started"><img src="https://img.shields.io/badge/Getting%20started-Run-16A34A?style=for-the-badge" alt="Getting started"></a>
+  <a href="#evaluation"><img src="https://img.shields.io/badge/Evaluation-29%2F30-F97316?style=for-the-badge" alt="Evaluation"></a>
+</p>
+
+## What is Olist AI Analyst?
 
 An AI agent that answers business questions in French on the Olist data warehouse: it writes
 the SQL, runs it read-only, checks the result and replies with a chart.
@@ -13,52 +38,54 @@ Everything runs for free on a laptop: the default model is `qwen2.5-coder:7b` th
 and it answers **29 of the 30 evaluation questions** correctly (median 5.4 s per question on a
 MacBook Pro M3 Pro).
 
-![Monthly revenue in 2017, answered in the chat interface](docs/assets/answer-monthly-revenue.png)
+<p align="center">
+  <img src="docs/assets/answer-monthly-revenue.png" alt="Monthly revenue in 2017, answered in the chat interface" width="900">
+</p>
 
-## Highlights
+## Key features
 
-- **Grounded answers.** The model writes the SQL and the sentence, Python does the maths: totals,
-  averages and extremes are computed from the result, and every number in the answer is checked
-  against them before it is shown.
-- **Self-correcting.** A query refused by the guard, rejected by PostgreSQL or returning no rows
-  goes back to the model with the error and a hint (for example where an unknown column really
-  lives). At most 3 queries per question.
-- **Safe by construction.** sqlglot lets through one `SELECT` on the `marts` schema only, and the
-  agent connects with a role that can do nothing else, in a read-only session with a timeout.
-- **Measured.** 30 questions with reference SQL, scored on the values returned, not on how the
+- 🧮 **Grounded answers.** The model writes the SQL and the sentence, Python does the maths:
+  totals, averages and extremes are computed from the result, and every number in the answer is
+  checked against them before it is shown.
+- 🔁 **Self-correcting.** A query refused by the guard, rejected by PostgreSQL or returning no
+  rows goes back to the model with the error and a hint (for example where an unknown column
+  really lives). At most 3 queries per question.
+- 🛡️ **Safe by construction.** sqlglot lets through one `SELECT` on the `marts` schema only, and
+  the agent connects with a role that can do nothing else, in a read-only session with a timeout.
+- 📏 **Measured.** 30 questions with reference SQL, scored on the values returned, not on how the
   SQL is written. The report is committed for each model.
-- **Tested in CI.** Unit tests with fake models, plus integration tests on a warehouse built from
-  Olist-Analytics on every pull request.
+- ✅ **Tested in CI.** Unit tests with fake models, plus integration tests on a warehouse built
+  from Olist-Analytics on every pull request.
+- 💸 **Free.** A 7B model on Ollama runs on a laptop; Groq, Claude or OpenAI are one setting away.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    Q([Question in French]) --> G[generate_sql<br/>LLM + schema context]
-    G -->|OUT_OF_SCOPE| R([Polite refusal])
-    G --> V{sql_guard<br/>sqlglot}
-    V -->|refused| G
-    V --> E[(PostgreSQL marts<br/>read-only role)]
-    E -->|error or no rows| G
-    E --> W[write_answer<br/>facts computed in Python]
-    W --> C[chart.py<br/>Plotly, no LLM]
-    C --> A([Answer + chart + SQL])
-```
+![Olist AI Analyst architecture](docs/olist-ai-analyst-architecture.svg)
 
-The schema context comes from `information_schema` and the dbt `manifest.json` of
-Olist-Analytics, so the model sees the same column descriptions and KPI definitions as the
-analysts.
+The editable source is [docs/olist-ai-analyst-architecture.drawio](docs/olist-ai-analyst-architecture.drawio) (open it on [draw.io](https://app.diagrams.net)).
 
-## Stack
+| Step | Module | What it does |
+| --- | --- | --- |
+| Schema context | `schema_context.py`, `examples.py` | Tables and columns from `information_schema`, descriptions and KPI definitions from the dbt `manifest.json`, 5 question/SQL examples |
+| `generate_sql` | `agent.py`, `llm.py` | The LLM writes one `SELECT`, or `OUT_OF_SCOPE` when the data cannot answer |
+| `sql_guard` | `sql_guard.py` | sqlglot: one statement, `marts` tables and real columns only, no sum or average of ids, `LIMIT 1000` |
+| `execute` | `db.py` | Runs the query as `olist_agent`, read-only session, 10 s timeout |
+| `write_answer` | `answer.py` | Facts computed in Python, French formatting, every number checked |
+| Chart | `chart.py` | Line, bars or nothing, chosen from the result's shape, without the LLM |
+| Interface | `app.py`, `cli.py` | Streamlit chat (`make app`) and command line (`make ask`) |
 
-| Layer | Choice |
+## Tech stack
+
+| Layer | Tools |
 | --- | --- |
-| LLM | Ollama, `qwen2.5-coder:7b` by default (free, runs locally); Groq, Claude or OpenAI via `LLM_PROVIDER` |
-| Agent | LangGraph, sqlglot to check the SQL before it runs |
-| Charts | Plotly |
-| Interface | Streamlit |
-| Warehouse | PostgreSQL 16 from Olist-Analytics, read-only role on `marts` |
-| Tooling | uv, ruff, pytest, GitHub Actions |
+| LLM | <img src="https://img.shields.io/badge/Ollama-000000?logo=ollama&logoColor=white" alt="Ollama"> `qwen2.5-coder:7b` by default, free and local · optional <img src="https://img.shields.io/badge/Groq-F55036" alt="Groq"> <img src="https://img.shields.io/badge/Claude-D97757?logo=anthropic&logoColor=white" alt="Claude"> <img src="https://img.shields.io/badge/OpenAI-412991" alt="OpenAI"> via `LLM_PROVIDER` |
+| Agent | <img src="https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white" alt="LangGraph"> <img src="https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white" alt="LangChain"> state graph and chat model clients |
+| SQL safety | <img src="https://img.shields.io/badge/sqlglot-30-F59E0B" alt="sqlglot"> parses and checks every query before it runs |
+| Warehouse | <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"> <img src="https://img.shields.io/badge/dbt-marts-FF694B?logo=dbt&logoColor=white" alt="dbt"> <img src="https://img.shields.io/badge/psycopg-3-336791" alt="psycopg"> from [Olist-Analytics](https://github.com/CyrilleAdrien/Olist-Analytics), read-only role on `marts` |
+| Answer and charts | <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python"> <img src="https://img.shields.io/badge/Plotly-7-3F4F75?logo=plotly&logoColor=white" alt="Plotly"> facts computed in Python, deterministic charts |
+| Interface | <img src="https://img.shields.io/badge/Streamlit-1.66-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit"> chat with the SQL and the data behind each answer |
+| Configuration | <img src="https://img.shields.io/badge/pydantic--settings-E92063?logo=pydantic&logoColor=white" alt="pydantic-settings"> `.env` settings |
+| Tooling | <img src="https://img.shields.io/badge/uv-DE5FE9?logo=uv&logoColor=white" alt="uv"> <img src="https://img.shields.io/badge/Ruff-D7FF64?logo=ruff&logoColor=black" alt="Ruff"> <img src="https://img.shields.io/badge/pytest-0A9EDC?logo=pytest&logoColor=white" alt="pytest"> <img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white" alt="GitHub Actions"> <img src="https://img.shields.io/badge/Make-6D00CC?logo=gnu&logoColor=white" alt="Make"> |
 
 ## Getting started
 
@@ -226,7 +253,7 @@ tests/               unit tests (fake models) and integration tests
 The Olist dataset is published under
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-## Author
+## 📢 Author
 
 **Cyrille FOTSO**, Data Engineer / DataOps.
 
