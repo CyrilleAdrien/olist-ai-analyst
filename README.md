@@ -35,6 +35,7 @@ make role      # creates the read-only role olist_agent (safe to run again)
 make doctor    # checks the warehouse connection and the model
 make schema    # prints the schema context sent to the model
 make ask Q="Quel est le panier moyen ?"
+make eval      # runs the 30 evaluation questions and writes a report
 make test      # unit tests, plus integration tests when the warehouse is reachable
 ```
 
@@ -83,6 +84,25 @@ value. `make ask` saves it to `chart.html`.
 ```bash
 make ask Q="Quels États ont le plus de retards de livraison ?"
 ```
+
+## Evaluation
+
+`evals/cases.toml` holds 30 questions in French: 8 KPIs (including the reference figures of
+Olist-Analytics), 6 trends over time, 8 rankings and filters, 4 rates and 4 questions the agent
+must decline (weather, poem, a request to delete data, a prompt injection). Each answerable
+question comes with the SQL that gives the right result.
+
+A case passes when the agent's result holds the same values as the reference result: column
+names, row order and extra columns are ignored, numbers are compared to 2 decimals. So the
+score measures the answer, not the way the SQL is written.
+
+```bash
+make eval                           # the model of .env
+make eval MODEL=qwen2.5-coder:14b   # another model, after ollama pull
+```
+
+Each run writes `evals/results/<provider>-<model>.md` (summary by category, every case) and a
+`.json` file with the SQL and the answer of every question.
 
 ## Safety
 

@@ -81,6 +81,32 @@ def ask_question(question: str, chart_path: str | None = None) -> int:
     return 0
 
 
+def evaluate(model: str | None, limit: int | None) -> int:
+    """Run the evaluation set and write the report in evals/results/."""
+    from olist_ai_analyst.agent import build_agent
+    from olist_ai_analyst.evaluation import load_cases, run_case, write_report
+    from olist_ai_analyst.schema_context import build_schema_context
+
+    settings = get_settings()
+    if model:
+        settings = settings.model_copy(update={"llm_model": model})
+    agent = build_agent(
+        get_chat_model(settings),
+        build_schema_context(settings),
+        lambda sql: run_query(settings, sql),
+    )
+    cases = load_cases()[:limit]
+    outcomes = []
+    for i, case in enumerate(cases, 1):
+        outcome = run_case(case, agent, lambda sql: run_query(settings, sql))
+        mark = "pass" if outcome.passed else f"FAIL ({outcome.reason})"
+        print(f"[{i}/{len(cases)}] {case.id}: {mark} in {outcome.seconds} s")
+        outcomes.append(outcome)
+    report = write_report(f"{settings.llm_provider}/{settings.model_name}", outcomes)
+    print(f"\n{sum(o.passed for o in outcomes)}/{len(outcomes)} passed, report: {report}")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="olist-ai-analyst")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -89,7 +115,12 @@ def main() -> None:
     ask_parser = sub.add_parser("ask", help="Ask a question in French")
     ask_parser.add_argument("question")
     ask_parser.add_argument("--chart", metavar="PATH", help="Save the chart as an HTML file")
+    eval_parser = sub.add_parser("eval", help="Run the evaluation set")
+    eval_parser.add_argument("--model", help="Model to evaluate instead of LLM_MODEL")
+    eval_parser.add_argument("--limit", type=int, help="Only the first N cases")
     args = parser.parse_args()
+    if args.command == "eval":
+        sys.exit(evaluate(args.model, args.limit))
     if args.command == "ask":
         sys.exit(ask_question(args.question, args.chart))
     commands = {"doctor": doctor, "schema": show_schema}

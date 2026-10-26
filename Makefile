@@ -4,7 +4,7 @@
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install role doctor schema ask test lint format
+.PHONY: help install role doctor schema ask eval test lint format
 
 help: ## List the available commands
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) \
@@ -28,6 +28,9 @@ schema: .env ## Print the schema context sent to the LLM
 
 ask: .env ## Ask the agent a question: make ask Q="Quel est le panier moyen ?"
 	uv run olist-ai-analyst ask "$(Q)" --chart chart.html
+
+eval: .env ## Run the evaluation set: make eval [MODEL=qwen2.5-coder:14b]
+	uv run olist-ai-analyst eval $(if $(MODEL),--model $(MODEL))
 
 test: ## Run the tests (integration tests are skipped without a warehouse)
 	uv run pytest
