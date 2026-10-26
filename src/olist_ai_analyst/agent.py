@@ -35,6 +35,12 @@ Rules:
   seller location is in dim_sellers, joined to fct_order_items on seller_id; products are
   joined to fct_order_items on product_id; dim_dates only holds calendar columns, joined on
   order_date = date_day.
+- Rates and shares are percentages: 100.0 * count(*) filter (where ...) / count(*),
+  rounded to 2 decimals. Never round a 0-1 ratio.
+- Count items as rows of fct_order_items. order_item_id is a position in the order: never
+  sum it.
+- New customers are counted on dim_customers.first_order_date (with has_delivered_order when
+  the question is about customers who received an order).
 - Give readable column aliases in English (snake_case) and round averages and rates to 2 decimals.
 - Reply with the query only, in a ```sql block, without explanation.
 - If the question cannot be answered with these tables (weather, code, opinions, other
