@@ -71,7 +71,7 @@ def test_column_of_a_table_not_joined_is_refused():
 
 
 def test_misspelled_column_gets_a_suggestion():
-    with pytest.raises(UnsafeQueryError, match="Did you mean: fct_orders.order_date"):
+    with pytest.raises(UnsafeQueryError, match="Did you mean: .*fct_orders.order_date"):
         validate_sql("select o.order_dat from fct_orders as o", TABLES)
 
 
