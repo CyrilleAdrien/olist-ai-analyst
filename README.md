@@ -14,6 +14,7 @@ schema, through a dedicated read-only role.
 | LLM | Ollama, `qwen2.5-coder:7b` by default (free, runs locally); Groq, Claude or OpenAI via `LLM_PROVIDER` |
 | Agent | LangGraph, sqlglot to check the SQL before it runs |
 | Charts | Plotly |
+| Interface | Streamlit |
 | Warehouse | PostgreSQL 16 from Olist-Analytics, read-only role on `marts` |
 | Tooling | uv, ruff, pytest |
 
@@ -36,6 +37,7 @@ make doctor    # checks the warehouse connection and the model
 make schema    # prints the schema context sent to the model
 make ask Q="Quel est le panier moyen ?"
 make eval      # runs the 30 evaluation questions and writes a report
+make app       # opens the chat interface on http://localhost:8501
 make test      # unit tests, plus integration tests when the warehouse is reachable
 ```
 
@@ -84,6 +86,16 @@ value. `make ask` saves it to `chart.html`.
 ```bash
 make ask Q="Quels États ont le plus de retards de livraison ?"
 ```
+
+## Chat interface
+
+```bash
+make app       # http://localhost:8501
+```
+
+`app.py` is a Streamlit chat: type a question in French or click an example. Each answer shows
+the text, the chart, the SQL with the number of queries and the time taken, and the data
+table. The conversation stays on screen until you clear it.
 
 ## Evaluation
 

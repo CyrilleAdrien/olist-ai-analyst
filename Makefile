@@ -4,7 +4,7 @@
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install role doctor schema ask eval test lint format
+.PHONY: help install role doctor schema ask eval app test lint format
 
 help: ## List the available commands
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) \
@@ -31,6 +31,9 @@ ask: .env ## Ask the agent a question: make ask Q="Quel est le panier moyen ?"
 
 eval: .env ## Run the evaluation set: make eval [MODEL=qwen2.5-coder:14b]
 	uv run olist-ai-analyst eval $(if $(MODEL),--model $(MODEL))
+
+app: .env ## Start the chat interface on http://localhost:8501
+	uv run streamlit run src/olist_ai_analyst/app.py
 
 test: ## Run the tests (integration tests are skipped without a warehouse)
 	uv run pytest
