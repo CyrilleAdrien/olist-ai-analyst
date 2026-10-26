@@ -3,6 +3,7 @@ import pytest
 from olist_ai_analyst.sql_guard import UnsafeQueryError, extract_sql, validate_sql
 
 TABLES = {
+    "fct_order_items": {"order_id", "order_item_id", "product_id"},
     "fct_orders": {"order_id", "order_date", "is_late", "customer_unique_id"},
     "dim_dates": {"date_day", "month_start"},
     "dim_customers": {"customer_unique_id", "customer_state"},
@@ -77,3 +78,10 @@ def test_misspelled_column_gets_a_suggestion():
 def test_output_aliases_can_be_reused():
     sql = "select order_date as day, count(*) as n from fct_orders group by day order by n desc"
     assert validate_sql(sql, TABLES).endswith("ORDER BY n DESC LIMIT 1000")
+
+
+def test_identifiers_are_never_summed():
+    with pytest.raises(UnsafeQueryError, match="order_item_id is an identifier or a position"):
+        validate_sql(
+            "select product_id, sum(order_item_id) from fct_order_items group by 1", TABLES
+        )

@@ -104,6 +104,13 @@ def validate_sql(sql: str, tables: dict[str, set[str]], schema: str = "marts") -
             raise UnsafeQueryError(f"Unknown table {table.name}. Available tables: {known}.")
 
     _check_columns(query, tables)
+    for aggregate in query.find_all(exp.Sum, exp.Avg):
+        column = aggregate.this
+        if isinstance(column, exp.Column) and column.name.endswith("_id"):
+            raise UnsafeQueryError(
+                f"{column.name} is an identifier or a position, not a quantity: do not "
+                f"{aggregate.key} it. To count rows, use count(*) or count(distinct ...)."
+            )
 
     limit = query.args.get("limit")
     limit_value = limit.expression if limit else None
