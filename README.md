@@ -9,6 +9,46 @@ It builds on [Olist-Analytics](https://github.com/CyrilleAdrien/Olist-Analytics)
 the Olist dataset into PostgreSQL and models it with dbt. The agent only reads the `marts`
 schema, through a dedicated read-only role.
 
+Everything runs for free on a laptop: the default model is `qwen2.5-coder:7b` through Ollama,
+and it answers **29 of the 30 evaluation questions** correctly (median 5.4 s per question on a
+MacBook Pro M3 Pro).
+
+![Monthly revenue in 2017, answered in the chat interface](docs/assets/answer-monthly-revenue.png)
+
+## Highlights
+
+- **Grounded answers.** The model writes the SQL and the sentence, Python does the maths: totals,
+  averages and extremes are computed from the result, and every number in the answer is checked
+  against them before it is shown.
+- **Self-correcting.** A query refused by the guard, rejected by PostgreSQL or returning no rows
+  goes back to the model with the error and a hint (for example where an unknown column really
+  lives). At most 3 queries per question.
+- **Safe by construction.** sqlglot lets through one `SELECT` on the `marts` schema only, and the
+  agent connects with a role that can do nothing else, in a read-only session with a timeout.
+- **Measured.** 30 questions with reference SQL, scored on the values returned, not on how the
+  SQL is written. The report is committed for each model.
+- **Tested in CI.** Unit tests with fake models, plus integration tests on a warehouse built from
+  Olist-Analytics on every pull request.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Q([Question in French]) --> G[generate_sql<br/>LLM + schema context]
+    G -->|OUT_OF_SCOPE| R([Polite refusal])
+    G --> V{sql_guard<br/>sqlglot}
+    V -->|refused| G
+    V --> E[(PostgreSQL marts<br/>read-only role)]
+    E -->|error or no rows| G
+    E --> W[write_answer<br/>facts computed in Python]
+    W --> C[chart.py<br/>Plotly, no LLM]
+    C --> A([Answer + chart + SQL])
+```
+
+The schema context comes from `information_schema` and the dbt `manifest.json` of
+Olist-Analytics, so the model sees the same column descriptions and KPI definitions as the
+analysts.
+
 ## Stack
 
 | Layer | Choice |
@@ -99,6 +139,10 @@ make app       # http://localhost:8501
 the text, the chart, the SQL with the number of queries and the time taken, and the data
 table. The conversation stays on screen until you clear it.
 
+| Answer | SQL and data behind it |
+| --- | --- |
+| ![Review score of late orders](docs/assets/answer-late-reviews.png) | ![The query and its result](docs/assets/sql-late-reviews.png) |
+
 ## Evaluation
 
 `evals/cases.toml` holds 30 questions in French: 8 KPIs (including the reference figures of
@@ -118,6 +162,19 @@ make eval MODEL=qwen2.5-coder:14b   # another model, after ollama pull
 Each run writes `evals/results/<provider>-<model>.md` (summary by category, every case) and a
 `.json` file with the SQL and the answer of every question.
 
+### Results
+
+| Model | Passed | First query | Median | Max |
+| --- | --- | --- | --- | --- |
+| `ollama/qwen2.5-coder:7b` | 29/30 (96.7 %) | 24/30 | 5.4 s | 19.3 s |
+
+By category: KPIs 8/8, trends 5/6, rankings 8/8, rates 4/4, declined questions 4/4. The full
+report is in [`evals/results/ollama-qwen2.5-coder-7b.md`](evals/results/ollama-qwen2.5-coder-7b.md).
+
+The score went from 27/30 to 29/30 by fixing what the failures showed: rates as percentages
+rather than ratios, items counted as rows rather than by summing `order_item_id` (now also
+refused by the guard), new customers read from `dim_customers`.
+
 ## Continuous integration
 
 GitHub Actions runs two jobs on every pull request and on `main`:
@@ -134,3 +191,46 @@ The evaluation is not part of CI: it needs a real model (`make eval` on your mac
 
 The agent connects with the `olist_agent` role, which can only `SELECT` from `marts`. Each
 session is also opened read-only, with a 10 second statement timeout.
+
+## Limits
+
+- Each question is answered on its own: the agent does not use the previous questions of the
+  conversation, so "et en 2018 ?" needs the full question.
+- With the 7B model, a question that needs a non-obvious definition can still return a
+  plausible but wrong result. The remaining failure forgets the "received at least one order"
+  filter on new customers, and so also counts September and October 2018, the last months of
+  the dataset, whose orders were not delivered.
+- The answer is only as good as the marts: anything outside the 6 tables (weather, marketing
+  spend, stock) is declined.
+
+## Project layout
+
+```
+src/olist_ai_analyst/
+  agent.py           LangGraph graph: generate_sql, execute, write_answer
+  sql_guard.py       sqlglot checks before a query runs
+  schema_context.py  schema + dbt docs sent to the model
+  examples.py        question/SQL examples for the prompt
+  answer.py          computed facts, French formatting, number check
+  chart.py           Plotly chart picked from the result's shape
+  app.py             Streamlit chat
+  evaluation.py      execution-accuracy scoring
+  cli.py, config.py, db.py, llm.py
+evals/               30 questions and the committed reports
+scripts/             read-only role creation
+tests/               unit tests (fake models) and integration tests
+```
+
+## Data licence
+
+The Olist dataset is published under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+## Author
+
+**Cyrille FOTSO**, Data Engineer / DataOps.
+
+<p>
+  <a href="https://www.linkedin.com/in/cyrille-fotso-a25609428/"><img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin" alt="LinkedIn"></a>
+  <a href="https://github.com/CyrilleAdrien"><img src="https://img.shields.io/badge/GitHub-CyrilleAdrien-181717?style=for-the-badge&logo=github" alt="GitHub"></a>
+</p>
