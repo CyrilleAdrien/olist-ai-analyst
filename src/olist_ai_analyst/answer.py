@@ -94,9 +94,15 @@ def compute_facts(columns: list[str], rows: list[tuple[Any, ...]]) -> list[str]:
     values = [v for _, v in points]
     if not any(word in name.lower() for word in NOT_ADDITIVE):
         facts.append(f"Total de {name} : {fr(sum(values))}")
-    facts.append(
-        f"Moyenne de {name} sur les {len(values)} lignes : {fr(sum(values) / len(values))}"
-    )
+    average = fr(sum(values) / len(values))
+    if any(word in name.lower() for word in NOT_ADDITIVE):
+        # The plain mean of per-group rates is not the overall rate: say so, or it gets quoted
+        facts.append(
+            f"Moyenne simple des {len(values)} valeurs de {name} : {average}"
+            " (non pondérée, ce n'est pas la valeur globale)"
+        )
+    else:
+        facts.append(f"Moyenne de {name} sur les {len(values)} lignes : {average}")
     if label is not None:
         top = max(points, key=lambda p: p[1])
         low = min(points, key=lambda p: p[1])

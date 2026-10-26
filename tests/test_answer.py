@@ -33,6 +33,7 @@ def test_facts_give_total_average_and_extremes():
 def test_rates_get_no_total():
     facts = compute_facts(["customer_state", "late_rate"], [("AL", 21.41), ("DF", 5.58)])
     assert not any(f.startswith("Total") for f in facts)
+    assert facts[1].startswith("Moyenne simple des 2 valeurs de late_rate : 13,50 (non pondérée")
     assert "Plus bas : 5,58 pour DF (District fédéral)" in facts
 
 
