@@ -2,19 +2,19 @@
   "model": "ollama/qwen2.5-coder:7b",
   "date": "2026-10-26",
   "summary": {
-    "passed": 27,
+    "passed": 28,
     "total": 30,
-    "accuracy": 90.0,
+    "accuracy": 93.3,
     "by_category": {
       "kpi": "8/8",
       "time": "5/6",
       "ranking": "7/8",
-      "rate": "3/4",
+      "rate": "4/4",
       "out_of_scope": "4/4"
     },
-    "first_try": 23,
-    "median_seconds": 5.3,
-    "max_seconds": 19.5
+    "first_try": 24,
+    "median_seconds": 5.6,
+    "max_seconds": 19.6
   },
   "cases": [
     {
@@ -24,7 +24,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 11.0,
+      "seconds": 12.9,
       "sql": "SELECT SUM(items_revenue_brl) AS revenue_brl FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "Le chiffre d'affaires total des commandes livrées est de 13 221 498,11 BRL.",
       "reason": ""
@@ -36,7 +36,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 1.7,
+      "seconds": 1.9,
       "sql": "SELECT COUNT(*) AS delivered_orders FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "96 478 commandes ont été livrées.",
       "reason": ""
@@ -48,7 +48,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 2.6,
+      "seconds": 2.9,
       "sql": "SELECT ROUND(CAST(AVG(items_revenue_brl) AS DECIMAL), 2) AS average_basket_brl FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "Le panier moyen par commande livrée est de 137,04 BRL.",
       "reason": ""
@@ -60,7 +60,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 2.6,
+      "seconds": 3.0,
       "sql": "SELECT ROUND(CAST(AVG(review_score) AS DECIMAL), 2) AS average_score FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "La note moyenne laissée par les clients sur les commandes livrées est de 4,16.",
       "reason": ""
@@ -72,8 +72,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 3.0,
-      "sql": "SELECT SUM(freight_value_brl) AS total_shipping_cost_brl FROM fct_order_items WHERE is_delivered LIMIT 1000",
+      "seconds": 3.4,
+      "sql": "SELECT SUM(freight_value_brl) AS total_shipping_cost_brl FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "Les frais de port au total sur les commandes livrées ont coûté 2 198 275,64 BRL.",
       "reason": ""
     },
@@ -84,7 +84,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 2.0,
+      "seconds": 2.3,
       "sql": "SELECT AVG(delivery_days) AS average_delivery_days FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "Le délai moyen de livraison est de 12,50 jours.",
       "reason": ""
@@ -96,8 +96,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 3.2,
-      "sql": "SELECT ROUND(CAST(SUM(CAST(is_late AS INT)) * 100.0 / COUNT(order_id) AS DECIMAL), 2) AS late_delivery_percentage FROM fct_orders WHERE is_delivered LIMIT 1000",
+      "seconds": 3.4,
+      "sql": "SELECT ROUND(CAST(100.0 * SUM(CASE WHEN is_late THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL), 2) AS late_delivery_rate FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "6,77% des commandes livrées sont arrivées en retard.",
       "reason": ""
     },
@@ -108,8 +108,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 3.2,
-      "sql": "SELECT ROUND(CAST(SUM(CASE WHEN delivered_orders_count >= 2 THEN 1.0 ELSE 0 END) / COUNT(*) * 100 AS DECIMAL), 2) AS percentage FROM dim_customers WHERE has_delivered_order LIMIT 1000",
+      "seconds": 3.4,
+      "sql": "SELECT ROUND(CAST(100.0 * COUNT(*) FILTER(WHERE delivered_orders_count >= 2) / COUNT(*) AS DECIMAL), 2) AS percentage FROM dim_customers WHERE has_delivered_order LIMIT 1000",
       "answer": "3% des clients ayant reçu une commande ont reçu au moins deux.",
       "reason": ""
     },
@@ -120,7 +120,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 5.6,
+      "seconds": 6.6,
       "sql": "SELECT d.year_number, COUNT(*) AS delivered_orders FROM fct_orders AS o JOIN dim_dates AS d ON o.order_date = d.date_day WHERE o.is_delivered GROUP BY d.year_number ORDER BY d.year_number LIMIT 1000",
       "answer": "En 2016, Olist a livré 267 commandes. En 2017, ce nombre a considérablement augmenté à 43 428 commandes. En 2018, le chiffre a encore augmenté encore, atteignant 52 783 commandes.",
       "reason": ""
@@ -132,8 +132,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 6.9,
-      "sql": "SELECT d.quarter_number, SUM(o.items_revenue_brl) AS revenue_brl FROM fct_orders AS o JOIN dim_dates AS d ON o.order_date = d.date_day WHERE d.year_number = 2018 AND o.is_delivered GROUP BY d.quarter_number ORDER BY d.quarter_number LIMIT 1000",
+      "seconds": 8.0,
+      "sql": "SELECT d.quarter_number, SUM(o.items_revenue_brl) AS revenue_brl FROM fct_orders AS o JOIN dim_dates AS d ON o.order_date = d.date_day WHERE o.is_delivered AND d.year_number = 2018 GROUP BY d.quarter_number ORDER BY d.quarter_number LIMIT 1000",
       "answer": "Le chiffre d'affaires par trimestre en 2018 est de 2 704 438,38 BRL pour le premier trimestre, 2 807 156,64 BRL pour le deuxième trimestre et 1 706 530,10 BRL pour le troisième trimestre.",
       "reason": ""
     },
@@ -144,7 +144,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 5.0,
+      "seconds": 4.9,
       "sql": "SELECT d.month_start, COUNT(*) AS orders FROM fct_orders AS o JOIN dim_dates AS d ON o.order_date = d.date_day WHERE o.is_delivered AND d.year_number = 2017 GROUP BY d.month_start ORDER BY orders DESC LIMIT 1",
       "answer": "Le mois de novembre 2017 a compté le plus de commandes livrées, avec 7 289 commandes.",
       "reason": ""
@@ -156,10 +156,10 @@
       "passed": false,
       "status": "ok",
       "attempts": 1,
-      "seconds": 10.6,
-      "sql": "SELECT d.month_start, COUNT(DISTINCT c.customer_unique_id) AS new_customers FROM fct_orders AS o JOIN dim_customers AS c ON o.customer_unique_id = c.customer_unique_id JOIN dim_dates AS d ON o.order_date = d.date_day WHERE o.is_delivered AND d.year_number = 2018 AND c.first_order_date = d.date_day GROUP BY d.month_start ORDER BY d.month_start LIMIT 1000",
-      "answer": "En 2018, Olist a acquis 50 922 nouveaux clients ayant reçu au moins une commande. Cette moyenne mensuelle est de 6 365,25 clients, avec un haut de 6 837 en janvier et un bas de 5 874 en juin.",
-      "reason": "no column matches the reference column count"
+      "seconds": 11.4,
+      "sql": "SELECT d.month_start, COUNT(DISTINCT c.customer_unique_id) AS new_customers FROM fct_orders AS o JOIN dim_customers AS c ON o.customer_unique_id = c.customer_unique_id JOIN dim_dates AS d ON o.order_date = d.date_day WHERE c.first_order_date = o.order_date AND d.year_number = 2018 GROUP BY d.month_start ORDER BY d.month_start LIMIT 1000",
+      "answer": "En 2018, Olist a acquis 52 062 nouveaux clients ayant reçu au moins une commande. Cette moyenne mensuelle est de 5 206,20 clients. Le mois le plus actif en termes de nouveaux clients a été janvier 2018 avec 7 025 nouveaux clients, tandis que le mois le moins actif a été octobre 2018 avec seulement 1 nouveau client.",
+      "reason": "10 rows instead of 8"
     },
     {
       "id": "time_weekend",
@@ -168,8 +168,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 5.3,
-      "sql": "SELECT d.is_weekend, COUNT(*) AS orders, ROUND(CAST(AVG(f.review_score) AS DECIMAL), 2) AS average_score FROM fct_orders AS f JOIN dim_dates AS d ON f.order_date = d.date_day WHERE f.is_delivered GROUP BY d.is_weekend LIMIT 1000",
+      "seconds": 5.6,
+      "sql": "SELECT d.is_weekend, COUNT(*) AS orders, ROUND(CAST(AVG(f.review_score) AS DECIMAL), 2) AS average_score FROM fct_orders AS f JOIN dim_dates AS d ON f.order_date = d.date_day WHERE f.is_delivered GROUP BY d.is_weekend ORDER BY d.is_weekend LIMIT 1000",
       "answer": "Le week-end a vu 74 288 commandes livrées, contre 22 190 en semaine.",
       "reason": ""
     },
@@ -180,7 +180,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 9.6,
+      "seconds": 9.9,
       "sql": "SELECT d.month_start, ROUND(CAST(AVG(o.delivery_days) AS DECIMAL), 2) AS average_delivery_days FROM fct_orders AS o JOIN dim_dates AS d ON o.order_date = d.date_day WHERE d.year_number = 2018 AND o.is_delivered GROUP BY d.month_start ORDER BY d.month_start LIMIT 1000",
       "answer": "Le délai moyen de livraison a connu une baisse significative en 2018, passant de 14,01 jours en janvier à 7,66 jours en août. Cette évolution a été marquée par des fluctuations importantes, avec des mois comme février (16,87 jours) et avril (11,42 jours) qui ont connu des retards plus importants.",
       "reason": ""
@@ -192,7 +192,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 7.0,
+      "seconds": 7.1,
       "sql": "SELECT customer_state, COUNT(*) AS customer_count FROM dim_customers GROUP BY customer_state ORDER BY customer_count DESC LIMIT 5",
       "answer": "Les 5 États qui comptent le plus de clients sont : SP (São Paulo) avec 40 296 clients, RJ (Rio de Janeiro) avec 12 381 clients, MG (Minas Gerais) avec 11 252 clients, RS (Rio Grande do Sul) avec 5 276 clients et PR (Paraná) avec 4 879 clients.",
       "reason": ""
@@ -204,9 +204,9 @@
       "passed": false,
       "status": "ok",
       "attempts": 1,
-      "seconds": 14.9,
-      "sql": "SELECT p.product_category_name_english AS category, SUM(i.order_item_id) AS total_items_sold FROM fct_order_items AS i JOIN dim_products AS p ON i.product_id = p.product_id WHERE i.is_delivered GROUP BY p.product_category_name_english ORDER BY total_items_sold DESC LIMIT 10",
-      "answer": "Les 10 catégories qui ont vendu le plus d'articles livrés sont :\n\n1. bed_bath_table : 13 485 articles\n2. furniture_decor : 11 302 articles\n3. health_beauty : 10 849 articles\n4. sports_leisure : 9 698 articles\n5. computers_accessories : 9 650 articles\n6. housewares : 8 831 articles\n7. watches_gifts : 6 459 articles\n8. garden_tools : 5 773 articles\n9. telephony : 5 034 articles\n10. auto : 4 772 articles\n\nCette liste montre que les catégories les plus actives en termes de ventes sont les meubles et accessoires de maison, suivi par les produits de santé et beauté, les articles sportifs et loisirs, et les accessoires informatiques.",
+      "seconds": 12.4,
+      "sql": "SELECT p.product_category_name_english AS category, SUM(i.order_item_id) AS items_sold FROM fct_order_items AS i JOIN dim_products AS p ON i.product_id = p.product_id WHERE i.is_delivered GROUP BY 1 ORDER BY items_sold DESC LIMIT 10",
+      "answer": "Les 10 catégories qui ont vendu le plus d'articles livrés sont :\n\n1. bed_bath_table : 13 485 articles\n2. furniture_decor : 11 302 articles\n3. health_beauty : 10 849 articles\n4. sports_leisure : 9 698 articles\n5. computers_accessories : 9 650 articles\n6. housewares : 8 831 articles\n7. watches_gifts : 6 459 articles\n8. garden_tools : 5 773 articles\n9. telephony : 5 034 articles\n10. auto : 4 772 articles\n\nLa catégorie bed_bath_table a vendu le plus d'articles avec 13 485, suivie de furniture_decor avec 11 302 articles.",
       "reason": "no column matches the reference column items"
     },
     {
@@ -216,7 +216,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 19.5,
+      "seconds": 19.6,
       "sql": "SELECT s.seller_id, s.seller_state, s.seller_city, SUM(i.price_brl) AS revenue_brl FROM fct_order_items AS i JOIN dim_sellers AS s ON i.seller_id = s.seller_id WHERE i.is_delivered GROUP BY s.seller_id, s.seller_state, s.seller_city ORDER BY revenue_brl DESC LIMIT 5",
       "answer": "Les 5 vendeurs qui ont réalisé le plus de chiffre d'affaires sur les commandes livrées sont :\n\n1. 4869f7a5dfa277a7dca6462dcf3b52b2 (SP, Guariba) - 226 987,93 BRL\n2. 53243585a1d6dc2643021fd1853d8905 (BA, Lauro de Freitas) - 217 940,44 BRL\n3. 4a3ca9315b744ce9f8e9374361493884 (SP, Ibitinga) - 196 882,12 BRL\n4. fa1c13f2614d7b5c4749cbc52fecda94 (SP, Sumare) - 190 917,14 BRL\n5. 7c67e1448b00f6e969d365cea6b010ab (SP, Itaquaquecetuba) - 186 570,05 BRL",
       "reason": ""
@@ -228,7 +228,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 7.8,
+      "seconds": 7.3,
       "sql": "SELECT s.seller_state, COUNT(*) AS seller_count FROM dim_sellers AS s GROUP BY s.seller_state ORDER BY seller_count DESC LIMIT 5",
       "answer": "Les 5 États qui comptent le plus de vendeurs sont : SP (São Paulo) avec 1 849 vendeurs, PR (Paraná) avec 349, MG (Minas Gerais) avec 244, SC (Santa Catarina) avec 190 et RJ (Rio de Janeiro) avec 171.",
       "reason": ""
@@ -252,7 +252,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 6.6,
+      "seconds": 7.0,
       "sql": "SELECT c.customer_city, COUNT(*) AS orders FROM fct_orders AS o JOIN dim_customers AS c ON o.customer_unique_id = c.customer_unique_id WHERE o.is_delivered GROUP BY c.customer_city ORDER BY orders DESC LIMIT 5",
       "answer": "Les 5 villes de clients avec le plus de commandes livrées sont : São Paulo avec 15 047 commandes, Rio de Janeiro avec 6 597, Belo Horizonte avec 2 696, Brasília avec 2 067 et Curitiba avec 1 489.",
       "reason": ""
@@ -264,7 +264,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 4.6,
+      "seconds": 4.7,
       "sql": "SELECT SUM(i.price_brl) AS revenue_brl FROM fct_order_items AS i JOIN dim_products AS p ON i.product_id = p.product_id WHERE i.is_delivered AND p.product_category_name_english = 'health_beauty' LIMIT 1000",
       "answer": "Le chiffre d'affaires de la catégorie health_beauty sur les commandes livrées est de 1 233 131,72 BRL.",
       "reason": ""
@@ -276,7 +276,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 6.8,
+      "seconds": 7.3,
       "sql": "SELECT p.product_category_name_english AS category, COUNT(DISTINCT p.product_id) AS distinct_products FROM dim_products AS p JOIN fct_order_items AS i ON p.product_id = i.product_id GROUP BY p.product_category_name_english ORDER BY distinct_products DESC LIMIT 5",
       "answer": "Les 5 catégories avec le plus de produits différents vendus sont : bed_bath_table (3 029), sports_leisure (2 867), furniture_decor (2 657), health_beauty (2 444) et housewares (2 335).",
       "reason": ""
@@ -285,13 +285,13 @@
       "id": "rate_late_by_state",
       "category": "rate",
       "question": "Quels sont les 5 États où le pourcentage de commandes livrées en retard est le plus élevé ?",
-      "passed": false,
+      "passed": true,
       "status": "ok",
-      "attempts": 2,
-      "seconds": 12.8,
-      "sql": "SELECT c.customer_state, ROUND(CAST(AVG(CAST(o.is_late AS INT)) AS DECIMAL), 2) AS late_percentage FROM fct_orders AS o JOIN dim_customers AS c ON o.customer_unique_id = c.customer_unique_id WHERE o.is_delivered GROUP BY c.customer_state ORDER BY late_percentage DESC LIMIT 5",
-      "answer": "Les 5 États où le pourcentage de commandes livrées en retard est le plus élevé sont : AL (Alagoas) avec 21%, MA (Maranhão) avec 17%, SE (Sergipe) avec 15%, CE (Ceará) avec 14% et PI (Piauí) avec 14%.",
-      "reason": "no column matches the reference column late_pct"
+      "attempts": 1,
+      "seconds": 10.3,
+      "sql": "SELECT c.customer_state, ROUND(CAST(SUM(CAST(o.is_late AS INT)) * 100.0 / COUNT(o.order_id) AS DECIMAL), 2) AS late_order_rate FROM fct_orders AS o JOIN dim_customers AS c ON o.customer_unique_id = c.customer_unique_id WHERE o.is_delivered GROUP BY c.customer_state ORDER BY late_order_rate DESC LIMIT 5",
+      "answer": "Les 5 États où le pourcentage de commandes livrées en retard est le plus élevé sont : AL (Alagoas) avec 21,41%, MA (Maranhão) avec 17,36%, SE (Sergipe) avec 15,18%, PI (Piauí) avec 13,87% et CE (Ceará) avec 13,74%.",
+      "reason": ""
     },
     {
       "id": "rate_score_late",
@@ -300,7 +300,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 4.1,
+      "seconds": 4.5,
       "sql": "SELECT is_late, ROUND(CAST(AVG(review_score) AS DECIMAL), 2) AS average_score FROM fct_orders WHERE is_delivered GROUP BY is_late LIMIT 1000",
       "answer": "La note moyenne des commandes livrées à l'heure est de 4,29, tandis que celle des commandes livrées en retard est de 2,27.",
       "reason": ""
@@ -312,8 +312,8 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 3.9,
-      "sql": "SELECT ROUND(CAST(SUM(CASE WHEN main_payment_type = 'credit_card' THEN 1.0 ELSE 0 END) / COUNT(*) * 100 AS DECIMAL), 2) AS percentage_credit_card_payments FROM fct_orders WHERE is_delivered LIMIT 1000",
+      "seconds": 4.1,
+      "sql": "SELECT ROUND(CAST(100.0 * SUM(CASE WHEN main_payment_type = 'credit_card' THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL), 2) AS percentage_credit_card_payments FROM fct_orders WHERE is_delivered LIMIT 1000",
       "answer": "75,48% des commandes livrées ont été payées principalement par carte de crédit.",
       "reason": ""
     },
@@ -324,7 +324,7 @@
       "passed": true,
       "status": "ok",
       "attempts": 1,
-      "seconds": 5.7,
+      "seconds": 6.1,
       "sql": "SELECT order_status, COUNT(*) AS orders_count FROM fct_orders GROUP BY order_status LIMIT 1000",
       "answer": "Il y a 99 441 commandes en total, réparties sur 8 statuts différents. Le statut \"delivered\" compte le plus grand nombre de commandes avec 96 478, tandis que le statut \"approved\" en compte le moins avec 2. La moyenne de commandes par statut est de 12 430,12.",
       "reason": ""
